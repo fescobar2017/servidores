@@ -1,12 +1,27 @@
 #!/bin/bash
 
+if [ "$EUID" -eq 0 ]; then
+    echo "!!  Este script no debe ejecutarse como root. Saliendo..."
+    exit 1
+fi
+
+
+echo " ✔ Revisa binarios con sudo sin contraseña"
+echo " ✔ Revisa binarios con capabilities peligrosas"
+echo " ✔ Revisa directorios del PATH vulnerables a hijacking"
+
+read -n 1 -s -r -p "Presione cualquier tecla para continuar..."
+echo
+
+
+
 GTFO_URL="https://gtfobins.github.io/gtfobins.json"
 GTFO_FILE="/tmp/gtfobins.json"
 
-echo "[*] Descargando lista oficial de GTFOBins JSON..."
+echo "....Descargando lista oficial de GTFOBins JSON..."
 curl -s "$GTFO_URL" -o "$GTFO_FILE"
 
-echo "[*] Extrayendo lista de binarios..."
+echo "....Extrayendo lista de binarios..."
 GTFO_LIST=$(jq -r 'keys[]' "$GTFO_FILE")
 
 echo ""
@@ -19,7 +34,7 @@ echo ""
 # 1. SUID BINARIOS
 ##############################
 
-echo "[*] Buscando SUID que coincidan con GTFOBins..."
+echo "...Buscando SUID que coincidan con GTFOBins..."
 echo ""
 
 SUID_BINARIES=$(find / -perm -4000 -type f 2>/dev/null)
@@ -43,7 +58,7 @@ echo ""
 # 2. sudo NOPASSWD
 ##############################
 
-echo "[*] Buscando binarios GTFOBins con permisos sudo NOPASSWD..."
+echo "...Buscando binarios GTFOBins con permisos sudo NOPASSWD..."
 echo ""
 
 SUDOERS=$(grep -R "NOPASSWD" /etc/sudoers /etc/sudoers.d/ 2>/dev/null | awk '{print $NF}')
@@ -61,7 +76,7 @@ echo ""
 # 3. Capabilities
 ##############################
 
-echo "[*] Buscando binarios con capabilities peligrosas..."
+echo "..Buscando binarios con capabilities peligrosas..."
 echo ""
 
 CAPS=$(getcap -r / 2>/dev/null)
@@ -86,7 +101,7 @@ echo ""
 # 4. PATH Hijacking
 ##############################
 
-echo "[*] Analizando PATH Hijacking posible..."
+echo "..Analizando PATH Hijacking posible..."
 echo ""
 
 IFS=":" read -r -a PATH_DIRS <<< "$PATH"
@@ -98,7 +113,7 @@ for dir in "${PATH_DIRS[@]}"; do
 
         # Detectar si el usuario actual puede escribir
         if [ -w "$dir" ]; then
-            echo "[WARNING] Directorio del PATH inseguro: $dir"
+            echo "[PELIGRO] Directorio del PATH inseguro: $dir"
             echo "          → usuario puede escribir aquí (riesgo de PATH hijacking)"
         else
             echo "[OK] $dir seguro ($OWNER, permisos $PERM)"
@@ -106,6 +121,4 @@ for dir in "${PATH_DIRS[@]}"; do
     fi
 done
 
-echo ""
-echo "[*] Análisis terminado."
 
